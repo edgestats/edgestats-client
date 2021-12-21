@@ -23,6 +23,9 @@ func ProcessEvent(watcher *fsnotify.Watcher, event fsnotify.Event, fp string, of
 	}
 
 	if event.Op&fsnotify.Rename == fsnotify.Rename {
+		// allow edge node log rotate process to complete
+		time.Sleep(1000 * time.Millisecond)
+
 		// scan writes to new "log.old.log", ie old "log.log"
 		fpOld := fp[:len(fp)-3] + "old.log"
 		offset, err = processLog(fpOld, offset)
@@ -36,7 +39,6 @@ func ProcessEvent(watcher *fsnotify.Watcher, event fsnotify.Event, fp string, of
 		}
 
 		// start watching new log file, ie new "log.log"
-		time.Sleep(1000 * time.Millisecond) // allow log file to rotate
 		if err := watcher.Add(fp); err != nil {
 			return offset, err
 		}
@@ -71,8 +73,7 @@ func processLog(fp string, offset int64) (int64, error) {
 
 	f, err := os.Open(fp)
 	if err != nil {
-		fmt.Println("Filepath error:", err)
-		os.Exit(1) // return offset, err
+		return offset, err
 	}
 	defer f.Close()
 
